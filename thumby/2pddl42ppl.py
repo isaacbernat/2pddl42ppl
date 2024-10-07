@@ -53,8 +53,7 @@ class Wall:
 
 
 class Ball:
-    SIZE = 1
-    SPEED = 1
+    SIZE, SPEED, SOUND = 1, 1, 100
 
     def __init__(self):
         self.x = None
@@ -78,13 +77,14 @@ class Ball:
         self.x += self.dx
         self.y += self.dy
 
-        def handle_bounce(bounce_type):
+        def handle_bounce(bounce_type, pitch):
             current_time = time.ticks_ms()
             if current_time - self.last_bounce > 100:
-                if bounce_type == "paddle":
+                if bounce_type == "p":
                     stats.paddle_bounces += 1
-                elif bounce_type == "wall":
+                elif bounce_type == "w":
                     stats.wall_bounces += 1
+                thumby.audio.play(pitch, self.SOUND)
                 self.last_bounce = current_time
 
         if self.x <= Paddle.WIDTH and self.y <= paddle1.y + paddle1.length and paddle1.y <= self.y + self.SIZE:
@@ -96,7 +96,7 @@ class Ball:
             paddle_bounce = True
         if paddle_bounce:
             self.dx = -self.dx
-            handle_bounce("paddle")
+            handle_bounce("p", 7458)
             return
         
         if wall.length > 0 and self.x >= SCREEN_WIDTH - 1 - self.SIZE:
@@ -106,7 +106,7 @@ class Ball:
             self.dy = -self.dy
             wall_bounce = True
         if wall_bounce:
-            handle_bounce("wall")
+            handle_bounce("w", 7902)
             return
 
         if self.x <= 0 or self.x >= SCREEN_WIDTH:
@@ -203,38 +203,52 @@ def restart_game(menu_selection):
     return paddle1, paddle2, Ball(), wall, Stats(menu_selection)
 
 
-def display_settings(selected=0):
+def display_settings(selected=0, start_index=0):
     settings = [
         ["Ball Speed", Ball.SPEED, 0.2, 3.0, 0.2],
-        ["Ball Size", Paddle.SPEED, 1, 10, 1],
+        ["Ball Size", Ball.SIZE, 1, 10, 1],
         ["Paddle Height", Paddle.HEIGHT, 2, 40, 2],
         ["Paddle Speed", Paddle.SPEED, 0.2, 2.0, 0.2],
+        ["Sound Duration", Ball.SOUND, 0, 500, 50],
     ]
     while True:
         thumby.display.fill(0)
         thumby.display.drawText("Settings", 0, 0, 1)
-        for i, (name, value, _, _, _) in enumerate(settings):
-            if i == selected:
-                thumby.display.drawFilledRectangle(0, 8 + i * 8, len(name) * 6 + 24, 8, 1)
-                thumby.display.drawText(f"{name}: {value:.1f}", 0, 8 + i * 8, 0)
-            else:
-                thumby.display.drawText(f"{name}: {value:.1f}", 0, 8 + i * 8, 1)
-        thumby.display.drawText("Back", 0, 32, 1)
+        for i in range(3):  # screen can display max 5 lines of text
+            index = start_index + i
+            if index < len(settings):
+                name, value, _, _, _ = settings[index]
+                if index == selected:
+                    thumby.display.drawFilledRectangle(0, 8 + i * 8, len(name) * 6 + 24, 8, 1)
+                    thumby.display.drawText(f"{name}: {value:.1f}", 0, 8 + i * 8, 0)
+                else:
+                    thumby.display.drawText(f"{name}: {value:.1f}", 0, 8 + i * 8, 1)
         if selected == len(settings):
             thumby.display.drawFilledRectangle(0, 32, 24, 8, 1)
             thumby.display.drawText("Back", 0, 32, 0)
+        else:
+            thumby.display.drawText("Back", 0, 32, 1)
         thumby.display.update()
         
         if thumby.buttonU.justPressed():
-            selected = (selected - 1) % (len(settings) + 1)
-        elif thumby.buttonD.justPressed():
-            selected = (selected + 1) % (len(settings) + 1)
-        elif thumby.buttonA.justPressed() or thumby.buttonR.justPressed():
-            if selected == len(settings):
-                return settings
+            if selected > 0:
+                selected -= 1
+                if selected < start_index:
+                    start_index = selected
             else:
-                adjust_setting(settings[selected])
-        elif thumby.buttonL.justPressed():
+                selected = len(settings)
+                start_index = max(0, len(settings) - 3)
+        elif thumby.buttonD.justPressed():
+            if selected < len(settings):
+                selected += 1
+                if selected >= start_index + 3:
+                    start_index = selected - 2
+            else:
+                selected = 0
+                start_index = 0
+        elif selected != len(settings) and (thumby.buttonA.justPressed() or thumby.buttonR.justPressed()):
+            adjust_setting(settings[selected])
+        elif thumby.buttonL.justPressed() or thumby.buttonA.justPressed() or thumby.buttonR.justPressed():
             return settings
         time.sleep(0.1)
 
@@ -274,6 +288,7 @@ while True:
             Ball.SIZE = new_settings[1][1]
             Paddle.HEIGHT = int(new_settings[2][1])
             Paddle.SPEED = new_settings[3][1]
+            Ball.SOUND = new_settings[4][1]
             menu_selection = -1
         menu_selection = display_winner(stats, menu_selection)
         paddle1, paddle2, ball, wall, stats = restart_game(menu_selection)
