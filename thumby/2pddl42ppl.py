@@ -45,7 +45,7 @@ class Wall:
 
 
 class Ball:
-    SIZE, SPEED, SOUND = 1, 1, 100
+    SIZE, SPEED, AMOUNT, SOUND = 1, 1, 1, 100
 
     def __init__(self):
         self.x = None
@@ -177,6 +177,7 @@ def restart_game(menu_selection):
     paddle1 = Paddle(0, dp.height // 2 - Paddle.HEIGHT // 2)
     paddle2 = Paddle(dp.width - Paddle.WIDTH - 1, dp.height // 2 - Paddle.HEIGHT // 2)
     wall = Wall()
+    balls = [Ball() for _ in range(Ball.AMOUNT)]
     if menu_selection == 0:  # Coop
         paddle2.x = paddle1.x + 1
         paddle1.y = 0
@@ -187,16 +188,17 @@ def restart_game(menu_selection):
     elif menu_selection == 2:  # Solo
         paddle2.length = 0
         wall.length = dp.height
-    return paddle1, paddle2, Ball(), wall, Stats(menu_selection)
+    return paddle1, paddle2, balls, wall, Stats(menu_selection)
 
 
 def dp_settings(selected=0, start_index=0):
     settings = [  # name, value, min_val, max_val, step
         ["Ball Speed", Ball.SPEED, 0.2, 5.0, 0.2],
-        ["Ball Size", Ball.SIZE, 1, 20, 1],
+        ["Ball Size", Ball.SIZE, 1, 50, 1],
         ["Paddle Height", Paddle.HEIGHT, 2, 40, 2],
         ["Paddle Speed", Paddle.SPEED, 0.2, 2.0, 0.2],
         ["Sound Duration", Ball.SOUND, int(0), 500, 50],
+        ["Ball Amount", Ball.AMOUNT, 1, 20, 1],
     ]
     while True:
         dp.fill(0)
@@ -238,7 +240,6 @@ def dp_settings(selected=0, start_index=0):
 
 def adjust_setting(setting):
     name, value, min_val, max_val, step = setting
-    
     while True:
         dp.fill(0)
         dp.drawText(name, 0, 0, 1)
@@ -262,7 +263,7 @@ menu_selection = -1
 while True:
     if menu_selection == -1:
         menu_selection = dp_menu()
-        paddle1, paddle2, ball, wall, stats = restart_game(menu_selection)
+        paddle1, paddle2, balls, wall, stats = restart_game(menu_selection)
         stats.winner = "Good luck!    "
     elif stats.winner:
         if menu_selection == 3:  # Settings
@@ -272,12 +273,12 @@ while True:
             Paddle.HEIGHT = int(new_settings[2][1])
             Paddle.SPEED = new_settings[3][1]
             Ball.SOUND = new_settings[4][1]
+            Ball.AMOUNT = new_settings[5][1]
             menu_selection = -1
         menu_selection = dp_winner(stats, menu_selection)
-        paddle1, paddle2, ball, wall, stats = restart_game(menu_selection)
+        paddle1, paddle2, balls, wall, stats = restart_game(menu_selection)
     else:
         handle_input(paddle1, paddle2)
-        update_and_draw({paddle1, paddle2, ball, wall}, menu_selection)
+        update_and_draw([paddle1, paddle2, wall] + balls, menu_selection)
 
-# TODO more complex settings (e.g. more balls)
 # TODO change angle based on paddle bounce position (also on settings)
