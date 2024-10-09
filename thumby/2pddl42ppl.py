@@ -33,17 +33,6 @@ class Paddle:
         dp.drawFilledRectangle(self.x, int(self.y), self.width, self.length, 1)
 
 
-class Wall:
-    def __init__(self):
-        self.length = 0
-
-    def update(self, menu_selection=None):
-        pass
-
-    def draw(self):
-        dp.drawFilledRectangle(dp.width - 1, 0, 1, self.length, 1)
-
-
 class Ball:
     SIZE, SPEED, AMOUNT, SOUND = 1, 1, 1, 100
 
@@ -93,11 +82,10 @@ class Ball:
         elif (self.x + self.SIZE >= dp.width - Paddle.WIDTH) and self.y <= paddle2.y + paddle2.length and paddle2.y <= self.y + self.SIZE:
             bounce = 1
             self.dx = -self.dx
-        
-        if wall.length > 0 and self.x >= dp.width - 1 - self.SIZE:
+        elif wall.length > 0 and self.x >= dp.width - 1 - self.SIZE:
             self.dx = -self.dx
             bounce = 2
-        elif self.y <= 1 or self.y >= dp.height - self.SIZE:
+        if self.y <= 1 or self.y >= dp.height - self.SIZE:
             self.dy = -self.dy
             bounce = 2
         handle_bounce(bounce)
@@ -110,7 +98,7 @@ class Ball:
         dp.drawFilledRectangle(int(self.x), int(self.y), self.SIZE, self.SIZE, 1)
 
 
-def handle_input(paddle1, paddle2):
+def handle_ingame_input(paddle1, paddle2):
     if tb.buttonU.pressed():
         paddle1.direction = -1
     elif tb.buttonD.pressed():
@@ -175,8 +163,8 @@ def dp_menu(selected=0, options=["Coop", "Versus", "Solo", "Settings"]):
 
 def restart_game(menu_selection):
     paddle1 = Paddle(0, dp.height // 2 - Paddle.HEIGHT // 2)
-    paddle2 = Paddle(dp.width - Paddle.WIDTH - 1, dp.height // 2 - Paddle.HEIGHT // 2)
-    wall = Wall()
+    paddle2 = Paddle(dp.width - Paddle.WIDTH, dp.height // 2 - Paddle.HEIGHT // 2)
+    wall = Paddle(dp.width - Paddle.WIDTH, 0)
     balls = [Ball() for _ in range(Ball.AMOUNT)]
     if menu_selection == 0:  # Coop
         paddle2.x = paddle1.x + 1
@@ -278,7 +266,7 @@ while True:
         menu_selection = dp_winner(stats, menu_selection)
         paddle1, paddle2, balls, wall, stats = restart_game(menu_selection)
     else:
-        handle_input(paddle1, paddle2)
+        handle_ingame_input(paddle1, paddle2)
         update_and_draw([paddle1, paddle2, wall] + balls, menu_selection)
 
 # TODO change angle based on paddle bounce position (also on settings)
