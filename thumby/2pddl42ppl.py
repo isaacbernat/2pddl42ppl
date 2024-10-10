@@ -15,7 +15,7 @@ class Stats:
 
 
 class Paddle:
-    WIDTH, HEIGHT, SPEED = 1, 8, 1
+    WIDTH, HEIGHT, SPEED = 1, 22, 1  # TODO 10 instead of 22?
 
     def __init__(self, x, y):
         self.x = x
@@ -34,33 +34,35 @@ class Paddle:
 
 
 class Ball:
-    SIZE, SPEED, AMOUNT, SOUND = 1, 1, 1, 100
+    SIZE, SPEED, AMOUNT, SOUND, BOUNCE_DYNAMIC_ANGLE = 1, 1, 1, 100, 1
 
-    def __init__(self):
-        self.x = None
+    def __init__(self, direction):
         self.y = dp.height / 2.0
-        self.speed = self.SPEED
-        self.set_random_direction()
         self.last_bounce = 0
+        self.set_random_direction(direction)
 
-    def set_random_direction(self):
-        # Random angle between -45 and 45 degrees, avoiding too horizontal angles
-        angle = random.uniform(math.pi/8, math.pi/4)
-        if random.choice([True, False]):
-            angle = -angle
-        direction = random.choice([-1, 1])
-        
+    def set_random_direction(self, direction):
+        angle = random.uniform(math.pi/8, math.pi/4) * random.choice([-1, 1])  # -45º < angle < 45º
         self.x = dp.width - self.SIZE - 2 if direction == -1 else self.SIZE + 1
-        self.dx = direction * self.speed * math.cos(angle)
-        self.dy = self.speed * math.sin(angle)
+        self.dx = direction * self.SPEED * math.cos(angle)
+        self.dy = self.SPEED * math.sin(angle)
 
     def update(self, menu_selection, bounce=0):
-        self.x += self.dx
-        self.y += self.dy
-
-        def handle_bounce(bounce_type, pitch=0):
+        def handle_bounce(bounce_type, axis, paddle, pitch=0):
+            print(f"BOUNCEx {self.x}, y {self.y}, ball {(self.y - self.SIZE/2) }")
             current_time = time.ticks_ms()
             if current_time - self.last_bounce > 100:
+                if axis == 'x':
+                    if self.BOUNCE_DYNAMIC_ANGLE and paddle:
+                        new_angle = ((self.y - self.SIZE/2) - (paddle.y - paddle.length/2))/(paddle.length/2) + math.pi/2
+                        # print(f"x {self.x}, y {self.y}, new_angle: {new_angle}, {new_angle*90/(math.pi/2)}, ball {(self.y - self.SIZE/2) }, pad {(paddle.y - paddle.length/2)} ")
+                        self.dx = self.SPEED * math.cos(new_angle) * -1
+                        self.dy = self.SPEED * math.sin(new_angle) * -1 
+                    else:
+                        self.dx = -self.dx
+                elif axis == 'y':
+                    self.dy = -self.dy
+
                 if bounce_type == 1:  # paddle
                     stats.paddle_bounces += 1
                     pitch = 7458
@@ -68,27 +70,23 @@ class Ball:
                     stats.wall_bounces += 1
                     pitch = 7902
                 else:  # invalid bounce
-                    return
+                    return 0
                 tb.audio.play(freq=pitch, duration=self.SOUND)
                 self.last_bounce = current_time
+            return bounce_type
 
+        self.x += self.dx
+        self.y += self.dy
         if self.x <= Paddle.WIDTH and self.y <= paddle1.y + paddle1.length and paddle1.y <= self.y + self.SIZE:
-            bounce = 1
-            self.dx = -self.dx
-        elif menu_selection == 0:  # coop
-            if (Paddle.WIDTH <= self.x <= Paddle.WIDTH * 2) and self.y <= paddle2.y + paddle2.length and paddle2.y <= self.y + self.SIZE:
-                bounce = 1
-                self.dx = -self.dx
-        elif (self.x + self.SIZE >= dp.width - Paddle.WIDTH) and self.y <= paddle2.y + paddle2.length and paddle2.y <= self.y + self.SIZE:
-            bounce = 1
-            self.dx = -self.dx
+            bounce = handle_bounce(1, 'x', paddle1)
+        elif menu_selection == 0 and (Paddle.WIDTH <= self.x <= Paddle.WIDTH * 2) and self.y <= paddle2.y + paddle2.length and paddle2.y <= self.y + self.SIZE:
+            bounce = handle_bounce(1, 'x', paddle2)
+        elif menu_selection == 1 and (self.x + self.SIZE >= dp.width - Paddle.WIDTH) and self.y <= paddle2.y + paddle2.length and paddle2.y <= self.y + self.SIZE:
+            bounce = handle_bounce(1, 'x', paddle2)
         elif wall.length > 0 and self.x >= dp.width - 1 - self.SIZE:
-            self.dx = -self.dx
-            bounce = 2
+            bounce = handle_bounce(2, 'x', None)
         if self.y <= 1 or self.y >= dp.height - self.SIZE:
-            self.dy = -self.dy
-            bounce = 2
-        handle_bounce(bounce)
+            bounce = handle_bounce(2, 'y', None)
 
         if bounce == 0 and (self.x <= 0 or self.x >= dp.width):
             stats.winner = "Game over" if self.x <= 0 else "Player1 wins"
@@ -161,11 +159,10 @@ def dp_menu(selected=0, options=["Coop", "Versus", "Solo", "Settings"]):
         time.sleep(0.1)
 
 
-def restart_game(menu_selection):
+def restart_game(menu_selection, start_direction_choices=[1]):
     paddle1 = Paddle(0, dp.height // 2 - Paddle.HEIGHT // 2)
     paddle2 = Paddle(dp.width - Paddle.WIDTH, dp.height // 2 - Paddle.HEIGHT // 2)
     wall = Paddle(dp.width - Paddle.WIDTH, 0)
-    balls = [Ball() for _ in range(Ball.AMOUNT)]
     if menu_selection == 0:  # Coop
         paddle2.x = paddle1.x + 1
         paddle1.y = 0
@@ -173,9 +170,11 @@ def restart_game(menu_selection):
         wall.length = dp.height
     elif menu_selection == 1:  # Versus
         wall.length = 0
+        start_direction_choices = [-1, 1]
     elif menu_selection == 2:  # Solo
         paddle2.length = 0
         wall.length = dp.height
+    balls = [Ball(direction=random.choice(start_direction_choices)) for _ in range(Ball.AMOUNT)]
     return paddle1, paddle2, balls, wall, Stats(menu_selection)
 
 
@@ -187,6 +186,7 @@ def dp_settings(selected=0, start_index=0):
         ["Paddle Speed", Paddle.SPEED, 0.2, 2.0, 0.2],
         ["Sound Duration", Ball.SOUND, int(0), 500, 50],
         ["Ball Amount", Ball.AMOUNT, 1, 20, 1],
+        ["Bounce Angle", Ball.BOUNCE_DYNAMIC_ANGLE, 0, 1, 1],
     ]
     while True:
         dp.fill(0)
@@ -262,6 +262,7 @@ while True:
             Paddle.SPEED = new_settings[3][1]
             Ball.SOUND = new_settings[4][1]
             Ball.AMOUNT = new_settings[5][1]
+            Ball.BOUNCE_DYNAMIC_ANGLE = new_settings[6][1]
             menu_selection = -1
         menu_selection = dp_winner(stats, menu_selection)
         paddle1, paddle2, balls, wall, stats = restart_game(menu_selection)
@@ -269,4 +270,6 @@ while True:
         handle_ingame_input(paddle1, paddle2)
         update_and_draw([paddle1, paddle2, wall] + balls, menu_selection)
 
-# TODO change angle based on paddle bounce position (also on settings)
+# TODO exagerate a bit more dynamic bounces
+# TODO balls accelerate on X bounces
+# TODO fix bug when ball goes through a corner (e.g. on Solo) # TODO bug if BOUNCE y (or ball) > 40 or 72 depending on axis... reset?
