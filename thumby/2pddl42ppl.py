@@ -15,7 +15,7 @@ class Stats:
 
 
 class Paddle:
-    WIDTH, HEIGHT, SPEED = 1, 22, 1  # TODO 10 instead of 22?
+    WIDTH, HEIGHT, SPEED = 1, 10, 1
 
     def __init__(self, x, y):
         self.x = x
@@ -42,22 +42,20 @@ class Ball:
         self.set_random_direction(direction)
 
     def set_random_direction(self, direction):
-        angle = random.uniform(math.pi/8, math.pi/4) * random.choice([-1, 1])  # -45º < angle < 45º
+        angle = random.uniform(math.pi/8, math.pi/4) * random.choice([-1, 1])  # to debug corner bounce in Solo mode set to math.pi/11.5
         self.x = dp.width - self.SIZE - 2 if direction == -1 else self.SIZE + 1
         self.dx = direction * self.SPEED * math.cos(angle)
         self.dy = self.SPEED * math.sin(angle)
 
     def update(self, menu_selection, bounce=0):
-        def handle_bounce(bounce_type, axis, paddle, pitch=0):
-            print(f"BOUNCEx {self.x}, y {self.y}, ball {(self.y - self.SIZE/2) }")
+        def handle_bounce(bounce_type, axis, paddle, new_dx_sign=-1, pitch=0):
             current_time = time.ticks_ms()
             if current_time - self.last_bounce > 100:
                 if axis == 'x':
                     if self.BOUNCE_DYNAMIC_ANGLE and paddle:
                         new_angle = ((self.y - self.SIZE/2) - (paddle.y - paddle.length/2))/(paddle.length/2) + math.pi/2
-                        # print(f"x {self.x}, y {self.y}, new_angle: {new_angle}, {new_angle*90/(math.pi/2)}, ball {(self.y - self.SIZE/2) }, pad {(paddle.y - paddle.length/2)} ")
-                        self.dx = self.SPEED * math.cos(new_angle) * -1
-                        self.dy = self.SPEED * math.sin(new_angle) * -1 
+                        self.dx = self.SPEED * math.cos(new_angle) * (-1 if self.dx < 0 else 1)
+                        self.dy = self.SPEED * math.sin(new_angle) * (-1 if self.dy > 0 else 1)
                     else:
                         self.dx = -self.dx
                 elif axis == 'y':
@@ -77,17 +75,17 @@ class Ball:
 
         self.x += self.dx
         self.y += self.dy
-        if self.x <= Paddle.WIDTH and self.y <= paddle1.y + paddle1.length and paddle1.y <= self.y + self.SIZE:
-            bounce = handle_bounce(1, 'x', paddle1)
-        elif menu_selection == 0 and (Paddle.WIDTH <= self.x <= Paddle.WIDTH * 2) and self.y <= paddle2.y + paddle2.length and paddle2.y <= self.y + self.SIZE:
-            bounce = handle_bounce(1, 'x', paddle2)
-        elif menu_selection == 1 and (self.x + self.SIZE >= dp.width - Paddle.WIDTH) and self.y <= paddle2.y + paddle2.length and paddle2.y <= self.y + self.SIZE:
-            bounce = handle_bounce(1, 'x', paddle2)
-        elif wall.length > 0 and self.x >= dp.width - 1 - self.SIZE:
-            bounce = handle_bounce(2, 'x', None)
-        if self.y <= 1 or self.y >= dp.height - self.SIZE:
+        if self.dx < 0 and self.x <= Paddle.WIDTH and self.y <= paddle1.y + paddle1.length and paddle1.y <= self.y + self.SIZE:
+            bounce = handle_bounce(1, 'x', paddle1, new_dx_sign=-1)
+        elif self.dx < 0 and menu_selection == 0 and (Paddle.WIDTH <= self.x <= Paddle.WIDTH * 2) and self.y <= paddle2.y + paddle2.length and paddle2.y <= self.y + self.SIZE:
+            bounce = handle_bounce(1, 'x', paddle2, new_dx_sign=-1)
+        elif self.dx > 0 and menu_selection == 1 and (self.x + self.SIZE >= dp.width - Paddle.WIDTH) and self.y <= paddle2.y + paddle2.length and paddle2.y <= self.y + self.SIZE:
+            print("hola!")
+            bounce = handle_bounce(1, 'x', paddle2, new_dx_sign=1)
+        elif self.dx > 0 and wall.length > 0 and self.x >= dp.width - 1 - self.SIZE:
+            bounce = handle_bounce(2, 'x', None, new_dx_sign=1)
+        if (self.dy < 0 and self.y <= 1) or (self.dy > 0 and self.y >= dp.height - self.SIZE):
             bounce = handle_bounce(2, 'y', None)
-
         if bounce == 0 and (self.x <= 0 or self.x >= dp.width):
             stats.winner = "Game over" if self.x <= 0 else "Player1 wins"
             self.dx = 0
@@ -272,4 +270,3 @@ while True:
 
 # TODO exagerate a bit more dynamic bounces
 # TODO balls accelerate on X bounces
-# TODO fix bug when ball goes through a corner (e.g. on Solo) # TODO bug if BOUNCE y (or ball) > 40 or 72 depending on axis... reset?
