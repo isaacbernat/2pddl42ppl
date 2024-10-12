@@ -6,12 +6,11 @@ from thumby import display as dp
 
 
 class Stats:
-    def __init__(self, menu):
+    def __init__(self):
         self.wall_bounces = 0
         self.paddle_bounces = 0
         self.start_time = time.ticks_ms()
         self.winner = None
-        self.menu = menu
 
 
 class Paddle:
@@ -38,7 +37,6 @@ class Ball:
 
     def __init__(self, direction):
         self.y = dp.height / 2.0
-        self.last_bounce = 0
         self.set_random_direction(direction)
 
     def set_random_direction(self, direction):
@@ -48,42 +46,38 @@ class Ball:
         self.dy = self.SPEED * math.sin(angle)
 
     def update(self, menu_selection, bounce=0):
-        def handle_bounce(bounce_type, axis, paddle, new_dx_sign=-1, pitch=0):
-            current_time = time.ticks_ms()
-            if current_time - self.last_bounce > 100:
-                if axis == 'x':
-                    if self.BOUNCE_DYNAMIC_ANGLE and paddle:
-                        new_angle = ((self.y - self.SIZE/2) - (paddle.y - paddle.length/2))/(paddle.length/2) + math.pi/2
-                        self.dx = self.SPEED * math.cos(new_angle) * (-1 if self.dx < 0 else 1)
-                        self.dy = self.SPEED * math.sin(new_angle) * (-1 if self.dy > 0 else 1)
-                    else:
-                        self.dx = -self.dx
-                elif axis == 'y':
-                    self.dy = -self.dy
+        def handle_bounce(bounce_type, axis, paddle, pitch=0):
+            if axis == 'x':
+                if self.BOUNCE_DYNAMIC_ANGLE and paddle:
+                    new_angle = ((self.y - self.SIZE/2) - (paddle.y - paddle.length/2))/(paddle.length/2) + math.pi/2
+                    self.dx = self.SPEED * math.cos(new_angle) * (-1 if self.dx < 0 else 1)
+                    self.dy = self.SPEED * math.sin(new_angle) * (-1 if self.dy > 0 else 1)
+                else:
+                    self.dx = -self.dx
+            elif axis == 'y':
+                self.dy = -self.dy
 
-                if bounce_type == 1:  # paddle
-                    stats.paddle_bounces += 1
-                    pitch = 7458
-                elif bounce_type == 2:  # wall
-                    stats.wall_bounces += 1
-                    pitch = 7902
-                else:  # invalid bounce
-                    return 0
-                tb.audio.play(freq=pitch, duration=self.SOUND)
-                self.last_bounce = current_time
+            if bounce_type == 1:  # paddle
+                stats.paddle_bounces += 1
+                pitch = 7458
+            elif bounce_type == 2:  # wall
+                stats.wall_bounces += 1
+                pitch = 7902
+            else:  # invalid bounce
+                return 0
+            tb.audio.play(freq=pitch, duration=self.SOUND)
             return bounce_type
 
         self.x += self.dx
         self.y += self.dy
         if self.dx < 0 and self.x <= Paddle.WIDTH and self.y <= paddle1.y + paddle1.length and paddle1.y <= self.y + self.SIZE:
-            bounce = handle_bounce(1, 'x', paddle1, new_dx_sign=-1)
+            bounce = handle_bounce(1, 'x', paddle1)
         elif self.dx < 0 and menu_selection == 0 and (Paddle.WIDTH <= self.x <= Paddle.WIDTH * 2) and self.y <= paddle2.y + paddle2.length and paddle2.y <= self.y + self.SIZE:
-            bounce = handle_bounce(1, 'x', paddle2, new_dx_sign=-1)
+            bounce = handle_bounce(1, 'x', paddle2)
         elif self.dx > 0 and menu_selection == 1 and (self.x + self.SIZE >= dp.width - Paddle.WIDTH) and self.y <= paddle2.y + paddle2.length and paddle2.y <= self.y + self.SIZE:
-            print("hola!")
-            bounce = handle_bounce(1, 'x', paddle2, new_dx_sign=1)
+            bounce = handle_bounce(1, 'x', paddle2)
         elif self.dx > 0 and wall.length > 0 and self.x >= dp.width - 1 - self.SIZE:
-            bounce = handle_bounce(2, 'x', None, new_dx_sign=1)
+            bounce = handle_bounce(2, 'x', None)
         if (self.dy < 0 and self.y <= 1) or (self.dy > 0 and self.y >= dp.height - self.SIZE):
             bounce = handle_bounce(2, 'y', None)
         if bounce == 0 and (self.x <= 0 or self.x >= dp.width):
@@ -95,14 +89,13 @@ class Ball:
 
 
 def handle_ingame_input(paddle1, paddle2):
-    if tb.buttonU.pressed():
+    if tb.buttonU.pressed():  # paddle1
         paddle1.direction = -1
     elif tb.buttonD.pressed():
         paddle1.direction = 1
     else:
         paddle1.direction = 0
-
-    if tb.buttonA.pressed():
+    if tb.buttonA.pressed():  # paddle2
         paddle2.direction = -1
     elif tb.buttonB.pressed():
         paddle2.direction = 1
@@ -128,14 +121,12 @@ def dp_winner(stats, menu_selection):
     dp.drawText(f"{stats.paddle_bounces} paddle bounces", 0, 24, 1)
     dp.drawText("Press Right ->", 0, 32, 1)
     dp.update()
-    time.sleep(1)
 
     while True:
         if (tb.buttonR.pressed()):
             return menu_selection
         elif (tb.buttonL.pressed()):
             return -1
-        time.sleep(0.1)
 
 
 def dp_menu(selected=0, options=["Coop", "Versus", "Solo", "Settings"]):
@@ -154,7 +145,6 @@ def dp_menu(selected=0, options=["Coop", "Versus", "Solo", "Settings"]):
             selected = (selected + 1) % len(options)
         elif tb.buttonA.justPressed() or tb.buttonR.justPressed():
             return selected
-        time.sleep(0.1)
 
 
 def restart_game(menu_selection, start_direction_choices=[1]):
@@ -173,7 +163,7 @@ def restart_game(menu_selection, start_direction_choices=[1]):
         paddle2.length = 0
         wall.length = dp.height
     balls = [Ball(direction=random.choice(start_direction_choices)) for _ in range(Ball.AMOUNT)]
-    return paddle1, paddle2, balls, wall, Stats(menu_selection)
+    return paddle1, paddle2, balls, wall, Stats()
 
 
 def dp_settings(selected=0, start_index=0):
@@ -221,7 +211,6 @@ def dp_settings(selected=0, start_index=0):
             adjust_setting(settings[selected])
         elif tb.buttonL.justPressed() or tb.buttonA.justPressed() or tb.buttonR.justPressed():
             return settings
-        time.sleep(0.1)
 
 
 def adjust_setting(setting):
@@ -240,7 +229,6 @@ def adjust_setting(setting):
         elif tb.buttonA.justPressed() or tb.buttonR.justPressed() or tb.buttonL.justPressed():
             setting[1] = value
             return
-        time.sleep(0.05)
 
 
 dp.setFPS(60)
@@ -268,5 +256,5 @@ while True:
         handle_ingame_input(paddle1, paddle2)
         update_and_draw([paddle1, paddle2, wall] + balls, menu_selection)
 
-# TODO exagerate a bit more dynamic bounces
+# TODO exagerate a bit more dynamic bounces, esp upwards
 # TODO balls accelerate on X bounces
