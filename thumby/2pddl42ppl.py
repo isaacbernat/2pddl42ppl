@@ -33,7 +33,7 @@ class Paddle:
 
 
 class Ball:
-    SIZE, SPEED, AMOUNT, SOUND, BOUNCE_DYNAMIC_ANGLE = 1, 1, 1, 100, 1
+    SIZE, SPEED, AMOUNT, SOUND, BOUNCE_DYNAMIC_ANGLE, SIZE_REDUCTION_RATE = 20, 1, 1, 100, 1, 0.33
 
     def __init__(self, direction):
         self.y = dp.height / 2.0
@@ -41,7 +41,7 @@ class Ball:
 
     def set_random_direction(self, direction):
         angle = random.uniform(math.pi/8, math.pi/4) * random.choice([-1, 1])  # to debug corner bounce in Solo mode set to math.pi/11.5
-        self.x = dp.width - self.SIZE - 2 if direction == -1 else self.SIZE + 1
+        self.x = dp.width - int(self.SIZE) - 2 if direction == -1 else int(self.SIZE) + 1
         self.dx = direction * self.SPEED * math.cos(angle)
         self.dy = self.SPEED * math.sin(angle)
 
@@ -58,6 +58,7 @@ class Ball:
                 self.dy = -self.dy
 
             if bounce_type == 1:  # paddle
+                self.SIZE = max(1, self.SIZE - self.SIZE_REDUCTION_RATE)  # maybe only on paddle bounces?
                 stats.paddle_bounces += 1
                 pitch = 7458
             elif bounce_type == 2:  # wall
@@ -85,7 +86,7 @@ class Ball:
             self.dx = 0
 
     def draw(self):
-        dp.drawFilledRectangle(int(self.x), int(self.y), self.SIZE, self.SIZE, 1)
+        dp.drawFilledRectangle(int(self.x), int(self.y), int(self.SIZE), int(self.SIZE), 1)
 
 
 def handle_ingame_input(paddle1, paddle2):
@@ -175,6 +176,7 @@ def dp_settings(selected=0, start_index=0):
         ["Sound Duration", Ball.SOUND, int(0), 500, 50],
         ["Ball Amount", Ball.AMOUNT, 1, 20, 1],
         ["Bounce Angle", Ball.BOUNCE_DYNAMIC_ANGLE, 0, 1, 1],
+        ["Ball reduction rate", Ball.SIZE_REDUCTION_RATE, 0, 2, 0.1],
     ]
     while True:
         dp.fill(0)
@@ -249,6 +251,7 @@ while True:
             Ball.SOUND = new_settings[4][1]
             Ball.AMOUNT = new_settings[5][1]
             Ball.BOUNCE_DYNAMIC_ANGLE = new_settings[6][1]
+            Ball.SIZE_REDUCTION_RATE = new_settings[7][1]
             menu_selection = -1
         menu_selection = dp_winner(stats, menu_selection)
         paddle1, paddle2, balls, wall, stats = restart_game(menu_selection)
@@ -256,5 +259,6 @@ while True:
         handle_ingame_input(paddle1, paddle2)
         update_and_draw([paddle1, paddle2, wall] + balls, menu_selection)
 
+# TODO check bug on big ball size going through the paddle
 # TODO exagerate a bit more dynamic bounces, esp upwards
 # TODO balls accelerate on X bounces
