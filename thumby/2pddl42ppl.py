@@ -14,7 +14,7 @@ class Stats:
 
 
 class Paddle:
-    WIDTH, HEIGHT, SPEED = 1, 10, 1
+    WIDTH, HEIGHT, SPEED = 1, dp.height//5, 1
 
     def __init__(self, x, y):
         self.x = x
@@ -33,7 +33,7 @@ class Paddle:
 
 
 class Ball:
-    SIZE, SPEED, AMOUNT, SOUND, BOUNCE_DYNAMIC_ANGLE, SIZE_REDUCTION_RATE = 20, 1, 1, 100, 1, 0.33
+    SIZE, SPEED, AMOUNT, SOUND, BOUNCE_DYNAMIC_ANGLE, SIZE_REDUCTION_RATE = dp.height//5, 1, 1, 100, 1, 0.33
 
     def __init__(self, direction):
         self.y = dp.height / 2.0
@@ -49,16 +49,19 @@ class Ball:
         def handle_bounce(bounce_type, axis, paddle, pitch=0):
             if axis == 'x':
                 if self.BOUNCE_DYNAMIC_ANGLE and paddle:
-                    new_angle = ((self.y - self.SIZE/2) - (paddle.y - paddle.length/2))/(paddle.length/2) + math.pi/2
-                    self.dx = self.SPEED * math.cos(new_angle) * (-1 if self.dx < 0 else 1)
-                    self.dy = self.SPEED * math.sin(new_angle) * (-1 if self.dy > 0 else 1)
+                    mid_ball, mid_pad = (self.y + self.SIZE/2), (paddle.y + paddle.length/2)
+                    relative_position = (mid_pad - mid_ball) / (paddle.length / 2 + self.SIZE / 2)
+                    new_angle = max(-1, min(1, relative_position)) * (math.pi / 2.25)
+                    self.dx = self.SPEED * abs(math.cos(new_angle)) * (-1 if self.dx > 0 else 1)
+                    self.dy = self.SPEED * abs(math.sin(new_angle)) * (-1 if new_angle > 0 else 1)
+                    self.x = self.dx + Paddle.WIDTH if self.dx > 0 else dp.width - Paddle.WIDTH - self.dx - self.SIZE
                 else:
                     self.dx = -self.dx
             elif axis == 'y':
                 self.dy = -self.dy
 
             if bounce_type == 1:  # paddle
-                self.SIZE = max(1, self.SIZE - self.SIZE_REDUCTION_RATE)  # maybe only on paddle bounces?
+                self.SIZE = max(1, self.SIZE - self.SIZE_REDUCTION_RATE)
                 stats.paddle_bounces += 1
                 pitch = 7458
             elif bounce_type == 2:  # wall
@@ -259,6 +262,5 @@ while True:
         handle_ingame_input(paddle1, paddle2)
         update_and_draw([paddle1, paddle2, wall] + balls, menu_selection)
 
-# TODO check bug on big ball size going through the paddle
-# TODO exagerate a bit more dynamic bounces, esp upwards
+# TODO fix when rightmost part of ball is out of the screen on the right. Should be game over
 # TODO balls accelerate on X bounces
