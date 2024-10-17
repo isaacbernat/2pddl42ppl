@@ -54,7 +54,6 @@ class Ball:
                     new_angle = max(-1, min(1, relative_position)) * (math.pi / 2.25)
                     self.dx = self.SPEED * abs(math.cos(new_angle)) * (-1 if self.dx > 0 else 1)
                     self.dy = self.SPEED * abs(math.sin(new_angle)) * (-1 if new_angle > 0 else 1)
-                    self.x = self.dx + Paddle.WIDTH if self.dx > 0 else dp.width - Paddle.WIDTH - self.dx - self.SIZE
                 else:
                     self.dx = -self.dx
             elif axis == 'y':
@@ -84,7 +83,7 @@ class Ball:
             bounce = handle_bounce(2, 'x', None)
         if (self.dy < 0 and self.y <= 1) or (self.dy > 0 and self.y >= dp.height - self.SIZE):
             bounce = handle_bounce(2, 'y', None)
-        if bounce == 0 and (self.x <= 0 or self.x >= dp.width):
+        if bounce == 0 and (self.x + self.SIZE <= 0 or self.x >= dp.width):
             stats.winner = "Game over" if self.x <= 0 else "Player1 wins"
             self.dx = 0
 
@@ -262,5 +261,4 @@ while True:
         handle_ingame_input(paddle1, paddle2)
         update_and_draw([paddle1, paddle2, wall] + balls, menu_selection)
 
-# TODO fix when rightmost part of ball is out of the screen on the right. Should be game over
 # TODO balls accelerate on X bounces
