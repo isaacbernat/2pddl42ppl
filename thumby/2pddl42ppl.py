@@ -91,6 +91,15 @@ class Ball:
         dp.drawFilledRectangle(int(self.x), int(self.y), int(self.SIZE), int(self.SIZE), 1)
 
 
+def draw_text_screen(lines, highlight_line=-1):
+    dp.fill(0)
+    for i, line in enumerate(lines):
+        if i == highlight_line:
+            dp.drawFilledRectangle(0, i * 8, len(line) * 6, 8, 1)
+        dp.drawText(line, 0, i * 8, 1 if i != highlight_line else 0)
+    dp.update()
+
+
 def handle_ingame_input(paddle1, paddle2):
     if tb.buttonU.pressed():  # paddle1
         paddle1.direction = -1
@@ -116,15 +125,13 @@ def update_and_draw(objects, menu_selection):
     dp.update()
 
 
-def dp_winner(stats, menu_selection):
-    dp.fill(0)
-    dp.drawText(f"{stats.winner}!", 0, 0, 1)
-    dp.drawText(f"{int((time.ticks_ms() - stats.start_time)/1000)} seconds", 0, 8, 1)
-    dp.drawText(f"{stats.wall_bounces} wall bounces", 0, 16, 1)
-    dp.drawText(f"{stats.paddle_bounces} paddle bounces", 0, 24, 1)
-    dp.drawText("Press Right ->", 0, 32, 1)
-    dp.update()
-
+def show_winner(stats, menu_selection):
+    draw_text_screen([
+        f"{stats.winner}!",
+        f"{int((time.ticks_ms() - stats.start_time)/1000)} seconds",
+        f"{stats.wall_bounces} wall bounces",
+        f"{stats.paddle_bounces} paddle bounces",
+        "Press Right ->"])
     while True:
         if (tb.buttonR.pressed()):
             return menu_selection
@@ -132,16 +139,9 @@ def dp_winner(stats, menu_selection):
             return -1
 
 
-def dp_menu(selected=0, options=["Coop", "Versus", "Solo", "Settings"]):
+def show_menu(selected=0, options=["Coop", "Versus", "Solo", "Settings"]):
     while True:
-        dp.fill(0)
-        dp.drawText("2pddl 4 2ppl", 0, 0, 1)
-        for i, option in enumerate(options):
-            if i == selected:
-                dp.drawFilledRectangle(0, 8 + i * 8, len(option) * 6, 8, 1)
-            dp.drawText(option, 0, 8 + i * 8, int(i != selected))
-        dp.update()
-        
+        draw_text_screen(["2pddl 4 2ppl"] + options, highlight_line=selected + 1)
         if tb.buttonU.justPressed():
             selected = (selected - 1) % len(options)
         elif tb.buttonD.justPressed():
@@ -169,31 +169,25 @@ def restart_game(menu_selection, start_direction_choices=[1]):
     return paddle1, paddle2, balls, wall, Stats()
 
 
-def dp_settings(selected=0, start_index=0):
+def show_settings(selected=0, start_index=0):
     settings = [  # name, value, min_val, max_val, step
+        ["Paddle Height", Paddle.HEIGHT, int(2), 40, 2],
+        ["Paddle Speed", Paddle.SPEED, 0.2, 2.0, 0.2],
         ["Ball Speed", Ball.SPEED, 0.2, 5.0, 0.2],
         ["Ball Size", Ball.SIZE, 1, 50, 1],
-        ["Paddle Height", Paddle.HEIGHT, 2, 40, 2],
-        ["Paddle Speed", Paddle.SPEED, 0.2, 2.0, 0.2],
         ["Sound Duration", Ball.SOUND, int(0), 500, 50],
         ["Ball Amount", Ball.AMOUNT, 1, 20, 1],
         ["Bounce Angle", Ball.BOUNCE_DYNAMIC_ANGLE, 0, 1, 1],
         ["Ball reduction rate", Ball.SIZE_REDUCTION_RATE, 0, 2, 0.1],
     ]
     while True:
-        dp.fill(0)
-        dp.drawText("Settings", 0, 0, 1)
+        lines = ["Settings"]
         for i in range(3):  # screen can show max 5 lines of text
             index = start_index + i
             if index < len(settings):
                 name, value, _, _, _ = settings[index]
-                if index == selected:
-                    dp.drawFilledRectangle(0, 8 + i * 8, len(name) * 6 + 24, 8, 1)
-                dp.drawText(f"{name}: {value:.1f}", 0, 8 + i * 8, int(index != selected))
-        if selected == len(settings):
-            dp.drawFilledRectangle(0, 32, 24, 8, 1)
-        dp.drawText("Back = Left", 0, 32, selected != len(settings))
-        dp.update()
+                lines.append(f"{name}: {value:.1f}")
+        draw_text_screen(lines + ["Back = Left"], highlight_line=selected - start_index + 1 if selected < len(settings) else 4)
         
         if tb.buttonU.justPressed():
             if selected > 0:
@@ -220,12 +214,7 @@ def dp_settings(selected=0, start_index=0):
 def adjust_setting(setting):
     name, value, min_val, max_val, step = setting
     while True:
-        dp.fill(0)
-        dp.drawText(name, 0, 0, 1)
-        dp.drawText(f"Value: {value:.1f}", 0, 16, 1)
-        dp.drawText("Left = Back", 0, 32, 1)
-        dp.update()
-        
+        draw_text_screen([name, f"Value: {value:.1f}", "Left = Back"])
         if tb.buttonD.justPressed():
             value = max(min_val, value - step)
         elif tb.buttonU.justPressed():
@@ -240,22 +229,16 @@ menu_selection = -1
 
 while True:
     if menu_selection == -1:
-        menu_selection = dp_menu()
+        menu_selection = show_menu()
         paddle1, paddle2, balls, wall, stats = restart_game(menu_selection)
         stats.winner = "Good luck!    "
     elif stats.winner:
         if menu_selection == 3:  # Settings
-            new_settings = dp_settings()
-            Ball.SPEED = new_settings[0][1]
-            Ball.SIZE = new_settings[1][1]
-            Paddle.HEIGHT = int(new_settings[2][1])
-            Paddle.SPEED = new_settings[3][1]
-            Ball.SOUND = new_settings[4][1]
-            Ball.AMOUNT = new_settings[5][1]
-            Ball.BOUNCE_DYNAMIC_ANGLE = new_settings[6][1]
-            Ball.SIZE_REDUCTION_RATE = new_settings[7][1]
+            new_settings = show_settings()
+            for i, attr in enumerate(['HEIGHT', 'SPEED', 'SPEED', 'SIZE', 'SOUND', 'AMOUNT', 'BOUNCE_DYNAMIC_ANGLE', 'SIZE_REDUCTION_RATE']):
+                setattr(Paddle if i < 2 else Ball, attr, new_settings[i][1])
             menu_selection = -1
-        menu_selection = dp_winner(stats, menu_selection)
+        menu_selection = show_winner(stats, menu_selection)
         paddle1, paddle2, balls, wall, stats = restart_game(menu_selection)
     else:
         handle_ingame_input(paddle1, paddle2)
