@@ -46,13 +46,13 @@ class Ball:
         self.dy = self.SPEED * math.sin(angle)
 
     def update(self, menu_selection, bounce=0):
-        def handle_bounce(bounce_type, axis, paddle, pitch=0):
+        def handle_bounce(bounce_type, axis, paddle):
             if axis == 'x':
                 if self.BOUNCE_DYNAMIC_ANGLE and paddle:
                     mid_ball, mid_pad = (self.y + self.SIZE/2), (paddle.y + paddle.length/2)
                     relative_position = (mid_pad - mid_ball) / (paddle.length / 2 + self.SIZE / 2)
                     new_angle = max(-1, min(1, relative_position)) * (math.pi / 2.25)
-                    self.dx = self.SPEED * abs(math.cos(new_angle)) * (-1 if self.dx > 0 else 1)
+                    self.dx = self.SPEED * (-1 if self.dx > 0 else 1)
                     self.dy = self.SPEED * abs(math.sin(new_angle)) * (-1 if new_angle > 0 else 1)
                 else:
                     self.dx = -self.dx
@@ -62,13 +62,11 @@ class Ball:
             if bounce_type == 1:  # paddle
                 self.SIZE = max(1, self.SIZE - self.SIZE_REDUCTION_RATE)
                 stats.paddle_bounces += 1
-                pitch = 7458
             elif bounce_type == 2:  # wall
                 stats.wall_bounces += 1
-                pitch = 7902
             else:  # invalid bounce
                 return 0
-            tb.audio.play(freq=pitch, duration=self.SOUND)
+            tb.audio.play(freq=7458 if bounce_type == 1 else 7902, duration=self.SOUND)
             return bounce_type
 
         self.x += self.dx
@@ -117,7 +115,7 @@ def handle_ingame_input(paddle1, paddle2):
 
 def update_and_draw(objects, menu_selection):
     dp.fill(0)
-    dp.drawLine(0, 0, dp.width - 1, 0, 1)  # Draw horizontal walls
+    dp.drawLine(0, 0, dp.width - 1, 0, 1)  # horizontal walls
     dp.drawLine(0, dp.height -1, dp.width - 1, dp.height -1, 1)
     for o in objects:
         o.update(menu_selection)
@@ -243,5 +241,3 @@ while True:
     else:
         handle_ingame_input(paddle1, paddle2)
         update_and_draw([paddle1, paddle2, wall] + balls, menu_selection)
-
-# TODO balls accelerate on X bounces
