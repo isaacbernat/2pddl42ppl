@@ -23,21 +23,20 @@ class Paddle:
         self.width = self.WIDTH
         self.direction = 0  # -1 up, 0 still, 1 down
 
-    def update(self, menu_selection=None):
+    def update(self):
         self.y += self.direction * self.SPEED
         self.y = max(self.y, 0)
         self.y = min(self.y, dp.height - self.length)
-
-    def draw(self):
         dp.drawFilledRectangle(self.x, int(self.y), self.width, self.length, 1)
 
 
 class Ball:
     SIZE, SPEED, AMOUNT, SOUND, BOUNCE_DYNAMIC_ANGLE, SIZE_REDUCTION_RATE = dp.height//5, 1, 1, 100, 1, 0.33
 
-    def __init__(self, direction):
+    def __init__(self, menu_selection):
         self.y = dp.height / 2.0
-        self.set_random_direction(direction)
+        self.set_random_direction(random.choice([1, -1] if menu_selection == 1 else [1]))
+        self.menu_selection = menu_selection
 
     def set_random_direction(self, direction):
         angle = random.uniform(math.pi/8, math.pi/4) * random.choice([-1, 1])  # to debug corner bounce in Solo mode set to math.pi/11.5
@@ -45,7 +44,7 @@ class Ball:
         self.dx = direction * self.SPEED * math.cos(angle)
         self.dy = self.SPEED * math.sin(angle)
 
-    def update(self, menu_selection, bounce=0):
+    def update(self, bounce=0):
         def handle_bounce(bounce_type, axis, paddle):
             if axis == 'x':
                 if self.BOUNCE_DYNAMIC_ANGLE and paddle:
@@ -73,9 +72,9 @@ class Ball:
         self.y += self.dy
         if self.dx < 0 and self.x <= Paddle.WIDTH and self.y <= paddle1.y + paddle1.length and paddle1.y <= self.y + self.SIZE:
             bounce = handle_bounce(1, 'x', paddle1)
-        elif self.dx < 0 and menu_selection == 0 and (Paddle.WIDTH <= self.x <= Paddle.WIDTH * 2) and self.y <= paddle2.y + paddle2.length and paddle2.y <= self.y + self.SIZE:
+        elif self.dx < 0 and self.menu_selection == 0 and (Paddle.WIDTH <= self.x <= Paddle.WIDTH * 2) and self.y <= paddle2.y + paddle2.length and paddle2.y <= self.y + self.SIZE:
             bounce = handle_bounce(1, 'x', paddle2)
-        elif self.dx > 0 and menu_selection == 1 and (self.x + self.SIZE >= dp.width - Paddle.WIDTH) and self.y <= paddle2.y + paddle2.length and paddle2.y <= self.y + self.SIZE:
+        elif self.dx > 0 and self.menu_selection == 1 and (self.x + self.SIZE >= dp.width - Paddle.WIDTH) and self.y <= paddle2.y + paddle2.length and paddle2.y <= self.y + self.SIZE:
             bounce = handle_bounce(1, 'x', paddle2)
         elif self.dx > 0 and wall.length > 0 and self.x >= dp.width - 1 - self.SIZE:
             bounce = handle_bounce(2, 'x', None)
@@ -84,8 +83,6 @@ class Ball:
         if bounce == 0 and (self.x + self.SIZE <= 0 or self.x >= dp.width):
             stats.winner = "Game over" if self.x <= 0 else "Player1 wins"
             self.dx = 0
-
-    def draw(self):
         dp.drawFilledRectangle(int(self.x), int(self.y), int(self.SIZE), int(self.SIZE), 1)
 
 
@@ -113,13 +110,12 @@ def handle_ingame_input(paddle1, paddle2):
         paddle2.direction = 0
 
 
-def update_and_draw(objects, menu_selection):
+def update_and_draw(objects):
     dp.fill(0)
     dp.drawLine(0, 0, dp.width - 1, 0, 1)  # horizontal walls
     dp.drawLine(0, dp.height -1, dp.width - 1, dp.height -1, 1)
     for o in objects:
-        o.update(menu_selection)
-        o.draw()
+        o.update()
     dp.update()
 
 
@@ -148,7 +144,7 @@ def show_menu(selected=0, options=["Coop", "Versus", "Solo", "Settings"]):
             return selected
 
 
-def restart_game(menu_selection, start_direction_choices=[1]):
+def restart_game(menu_selection):
     paddle1 = Paddle(0, dp.height // 2 - Paddle.HEIGHT // 2)
     paddle2 = Paddle(dp.width - Paddle.WIDTH, dp.height // 2 - Paddle.HEIGHT // 2)
     wall = Paddle(dp.width - Paddle.WIDTH, 0)
@@ -159,11 +155,10 @@ def restart_game(menu_selection, start_direction_choices=[1]):
         wall.length = dp.height
     elif menu_selection == 1:  # Versus
         wall.length = 0
-        start_direction_choices = [-1, 1]
     elif menu_selection == 2:  # Solo
         paddle2.length = 0
         wall.length = dp.height
-    balls = [Ball(direction=random.choice(start_direction_choices)) for _ in range(Ball.AMOUNT)]
+    balls = [Ball(menu_selection) for _ in range(Ball.AMOUNT + (menu_selection == 0) * 2)]
     return paddle1, paddle2, balls, wall, Stats()
 
 
@@ -240,4 +235,4 @@ while True:
         paddle1, paddle2, balls, wall, stats = restart_game(menu_selection)
     else:
         handle_ingame_input(paddle1, paddle2)
-        update_and_draw([paddle1, paddle2, wall] + balls, menu_selection)
+        update_and_draw([paddle1, paddle2, wall] + balls)
