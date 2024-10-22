@@ -34,15 +34,12 @@ class Ball:
     SIZE, SPEED, AMOUNT, SOUND, BOUNCE_DYNAMIC_ANGLE, SIZE_REDUCTION_RATE = dp.height//5, 1, 1, 100, 1, 0.33
 
     def __init__(self, menu_selection):
-        self.y = dp.height / 2.0
-        self.set_random_direction(random.choice([1, -1] if menu_selection == 1 else [1]))
         self.menu_selection = menu_selection
-
-    def set_random_direction(self, direction):
-        angle = random.uniform(math.pi/8, math.pi/4) * random.choice([-1, 1])  # to debug corner bounce in Solo mode set to math.pi/11.5
-        self.x = dp.width - int(self.SIZE) - 2 if direction == -1 else int(self.SIZE) + 1
-        self.dx = direction * self.SPEED * math.cos(angle)
+        angle = random.uniform(math.pi/8, math.pi/4) * random.choice([-1, 1])  # to debug corner bounce in Solo mode: angle=math.pi/11.5, self.x=int(self.SIZE) + 1
+        self.dx = self.SPEED * math.cos(angle)
         self.dy = self.SPEED * math.sin(angle)
+        self.y = dp.height / 2.0
+        self.x = int(self.SIZE) + 1 if menu_selection == 1 else int(random.uniform(int(self.SIZE) + 1, dp.width -self.SIZE - 1))
 
     def update(self, bounce=0):
         def handle_bounce(bounce_type, axis, paddle):
