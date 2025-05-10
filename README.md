@@ -4,9 +4,9 @@
 Proof of concept implementation in [Thumby](https://thumby.us/) which uses familiar Pong mechanics. Has Versus, Coop and Solo modes. Physics, paddle, balls and up to 8 parameters are easily adjusted using the game settings menu. All this well under 0x100 (255) lines of code.
 
 ## Footage
-<iframe width="80%" height="auto" src="https://www.youtube.com/embed/K-yZ11NldGY" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+[![Demo video](https://img.youtube.com/vi/K-yZ11NldGY/0.jpg)](https://www.youtube.com/watch?v=K-yZ11NldGY)
 
-Do you think [Thumby](https://thumby.us/) is too small to be played by an adult. Well, here is proof it can be played by 2 at the same time with a single device! Notice that the ball gets smaller (and faster) on each bounce to keep it challenging (and one may configure this among other params).
+Do you think [Thumby](https://thumby.us/) is too small to be played by an adult. Well, click the image above to see a video proof that it can be played by 2 at the same time with a single device! Notice that the ball gets smaller (and faster) on each bounce to keep it challenging (and one may configure this among other params).
 
 ## How to play?
 - Player 1 controls the leftmost paddle using up and down arrows from D-pad (as expected).
